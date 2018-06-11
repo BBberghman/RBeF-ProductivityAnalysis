@@ -5,7 +5,7 @@ This program computes automaticaly the value of the productivity coefficient for
 - numerically, directly by solving the equation
 - using the properties of the characteristic time of a first-order system
 
-More information can be found in "Berghmen Erica, Analyse et modélisation d'un système de production d'eau potable par filtration sous lit de rivière, Juin 2018."
+More information can be found in "Berghman Erica, Analyse et modélisation d'un système de production d'eau potable par filtration sous lit de rivière, Juin 2018."
 
 ## How to use it?
 ### Data
