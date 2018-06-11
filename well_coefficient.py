@@ -12,7 +12,7 @@ from datetime import datetime, date
 # Output parameters
 print_help = 0      # 1 = print help and result, 0 = print only result
 plot = 0            # 1 = print graph
-print_data = 0      # 1 = print data
+print_data = 1      # 1 = print data
 write_csv = 0       # 1 = write in CSV
 
 # Parameters
@@ -28,9 +28,10 @@ NB_STD = 2          # Nb of std deviation beyond which cycles are discarded
 # colors when ploting the cycles
 colors = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"]
 
-#if write_csv : 
-csv_output = "Galery, 95 mean, 95 std, 87 mean, 87 std, 63 mean, 63 std, SAAS mean, SAAS std, slope mean, slope std, slope min, slope max\n" # CSV string output
-
+if write_csv : 
+    csv_output = "Galery, 1/tau mean, 1/tau std, slope mean, slope std, slope min, slope max\n" # CSV string output
+else:
+    csv_output = 0
 # Parse data
 def date2int(date_str):
     try:
@@ -247,7 +248,6 @@ def agreggate_tau(coef):
         coefMeans.append(np.mean(coef[c]))
         coefStd.append(np.std(coef[c]))
         if print_data: print("{} mean: {}+/-{}".format(c, coefMeans[-1], coefStd[-1]))
-        if write_csv : csv_output += "{}, {},".format(coefMeans[-1], coefStd[-1])
         for i in coef[c]:
             coefMerged.append(i)
     return coefMerged, coefMeans, coefStd

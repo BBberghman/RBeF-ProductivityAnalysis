@@ -7,6 +7,8 @@ timestamp, galery, atm = read_file(input_file)
 num_galery, MINLEN, DELTA = parameters(input_file)
 cycles, ht, label_cycles, start, times = water_heigth(timestamp, galery, atm)
 
+if write_csv:
+	csv_output += "{},".format(num_galery)
 
 #MINLEN = 0
 
@@ -43,9 +45,11 @@ if print_data:
 	print("Min slope: {}".format(min(slopes)))
 	print("Max slope: {}".format(max(slopes)))
 
-if write_csv : 
-	csv_output += "{}, {}, {}, {}".format(np.std(slopes), -1*np.std(slopes)/np.mean(slopes), min(slopes), max(slopes))
+if write_csv :
+	# characteristic time 
 	csv_output += "{}, {},".format(np.mean(coefMeans), np.std(coefMerged))
+	# slope
+	csv_output += "{}, {}, {}, {},".format(-1*np.mean(slopes), np.std(slopes), min(slopes), max(slopes))
 	with open("coef_output.csv", 'w') as f:
 		f.write(csv_output)
 
