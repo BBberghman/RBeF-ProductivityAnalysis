@@ -1,26 +1,25 @@
+# -*- coding: cp1252 -*-
 from well_coefficient import *
 
 # There should be no empty value in the dataset
 input_file = 'data-ht-7.csv'  # 1 - 2 - 5 - 6 - 7
-timestamp, galery, atm, diff = read_file(input_file)
+timestamp, galery, atm = read_file(input_file)
 num_galery, MINLEN, DELTA = parameters(input_file)
 cycles, ht, label_cycles, start, times = water_heigth(timestamp, galery, atm)
 
 
 #MINLEN = 0
-# SAAS
 
+# SAAS
 coef = caracteristic_time(cycles, start, DELTA, MINLEN)
 coefMerged, coefMeans, coefStd = agreggate_tau(coef)
 
 # SLOPES
-
 fig, ax = plt.subplots()
 ax.set_prop_cycle('color', colors)
 slopes, std_errors, intercepts, ln_cycles, len_cycles, date_strings, times_ln, valid_cycles = compute_slopes(cycles, start, DELTA, MINLEN, label_cycles, times)
 
 # FILTER 
-
 slopes = filter_slopes(slopes, std_errors, intercepts, ln_cycles, len_cycles, date_strings, times_ln, valid_cycles, num_galery, NB_STD)
 
 # PRINT
@@ -55,6 +54,6 @@ if plot:
 	plt.show()
 
 # TODO
-# CSV output with galery number
-# Calculate tau based on the real delta max and not on the value of the cycle (method does not work if cycles are not complete)
-# bug linearisation
+# Calculate tau based on the absolute delta max (obtained by going throught the whole data) and not on the value of the cycle (method does not work if cycles are not complete -> 63% of the delta of that cycle does not correspond to the 63% of the well if the cycle is not complete). Adding this feature would remove the need to only consider some cycles for the method using the charactéristic time and thus remove the need of DELTA and MINLEN
+# Should also check that it's the right beginning of the cycle
+# Add linear approx when concatenating (instead of deleting c2, change its value with a linear approx between last elem of c1 and first elem of c3)

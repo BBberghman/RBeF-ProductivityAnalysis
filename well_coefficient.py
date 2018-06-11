@@ -7,31 +7,29 @@ from scipy.stats import linregress
 from matplotlib.dates import date2num
 from datetime import datetime, date
 
-print_help = 0      # 1 = print help and result, 0 = print only result
-plot = 0            # 1 = print graph
-print_data = 1      # 1 = print data
-write_csv = 0       # 1 = write in CSV
 # Coded for Python 2.7
 
-# In case of error: DecodeError: 'ascii' codec can't decode byte
-# Make sure there is no special character or accent in the path
+# Output parameters
+print_help = 0      # 1 = print help and result, 0 = print only result
+plot = 0            # 1 = print graph
+print_data = 0      # 1 = print data
+write_csv = 0       # 1 = write in CSV
+
+# Parameters
+STEP_TIME = 1       # Minutes between each sample, depend on the parameter used in the data logger
 
 # Global variables
-NB_MERGE = 8          # Max nb of size of the (middle) cycle concatenated with another
+NB_MERGE = 8        # Max nb of elements in the cycle delelted (c2) when considering the concatenation of c1 and c3
 EPS = 1e-7          # EPS value added when calculating the ln to avoid having ln(0)
-NB_MAX = 10         # nb of elements to calculate the max
-NB_MIN = 5          # nb of elements to calculate the min
-NB_STD = 2          # nb of std deviation
-STEP_TIME = 1       # minutes between each sample
+NB_MAX = 10         # Nb of elements to calculate the max of the cycle (mean of the NB_MAX last elements)
+NB_MIN = 5          # Nb of elements to calculate the min (mean of the NB_MIN first elements)
+NB_STD = 2          # Nb of std deviation beyond which cycles are discarded
 
-
-# colors to display the cycles
+# colors when ploting the cycles
 colors = ["#1f77b4", "#aec7e8", "#ff7f0e", "#ffbb78", "#2ca02c", "#98df8a", "#d62728", "#ff9896", "#9467bd", "#c5b0d5", "#8c564b", "#c49c94", "#e377c2", "#f7b6d2", "#7f7f7f", "#c7c7c7", "#bcbd22", "#dbdb8d", "#17becf", "#9edae5"]
 
-if write_csv : 
-    csv_output = "Galery, 95 mean, 95 std, 87 mean, 87 std, 63 mean, 63 std, SAAS mean, SAAS std, slope mean, slope std, slope min, slope max\n" # CSV string output
-
-
+#if write_csv : 
+csv_output = "Galery, 95 mean, 95 std, 87 mean, 87 std, 63 mean, 63 std, SAAS mean, SAAS std, slope mean, slope std, slope min, slope max\n" # CSV string output
 
 # Parse data
 def date2int(date_str):
@@ -51,16 +49,17 @@ def read_file(input_file):
         while line:
             # print line
             lineSplit = line.split(',')
+
             timestamp.append(date2int(lineSplit[0]))
             galery.append(float(lineSplit[1]))
             atm.append(float(lineSplit[2]))
-            diff.append(float(lineSplit[3]))
+            #diff.append(float(lineSplit[3]))
             line = f.readline().strip()
-    return timestamp, galery, atm, diff
+    return timestamp, galery, atm
 
 # Get the correct parameters if name of input file has the number of the galery in it
-# MINLEN = minimal length of the cycle to be considered a complete cycle
-# DELTA = minimal height difference between hf and h0 to be considered a complete cycle
+# MINLEN = minimal length of the cycle to be considered an analysable cycle
+# DELTA = minimal height difference between hf and h0 to be considered an analysable cycle
 def parameters(input_file):
     if '1' in input_file:
         num_galery = 1
@@ -96,10 +95,10 @@ def min_cycle(cycle):
 
 def delta(cycle):
     deltaProb = max_cycle(cycle)-min_cycle(cycle) 
-    if deltaProb > 10:
+    if deltaProb > 0:       # as deltaProb is not the absolute delta (see fun of min and max_cycle), it might happen that it's < 0
         return deltaProb
     else:
-        return max(cycle) - min(cycle)
+        return max(cycle) - min(cycle)      # absolute diff
 
 # Two criterias are used to define a complete cycle: a min length and a min difference of total height, defined for each galery at the beginning
 def complete_cycle(cycle, deltaH, minLen):
@@ -125,8 +124,7 @@ def add_cycles(cycle, cycles, label, labels):
 # Order data to get the production and pumping cycles
 
 # When we have 3 cycles one after the other such as c1, c2, c3
-# Concatenate cycles c2 and c3 with cycle c1 if c2 is smaller than CONCAT in size (in order to avoid the breaking of a cycle if there is just a small drop of height)
-# We concatenate c3 as well to make the link between 2 cycles going the same way (up or down).
+# If cycle c2 is smaller than a certain length (NB_MERGE), we don't consider it. It is thus discarded and c1 and c3 are concatenated
 def merge_cycles(cycles, labels, ):
     new_cycles = [cycles[0]]
     new_labels = [labels[0]]
@@ -134,7 +132,6 @@ def merge_cycles(cycles, labels, ):
     while i < len(cycles) - 1: 
         if len(cycles[i]) < NB_MERGE :
             if print_help: print("Deleting the following cycle (c2): {}".format(cycles[i]))
-            #merge(cycles[i], new_cycles)        # c2
             merge(cycles[i+1], new_cycles)      # c3
             i = i + 2
         else:
@@ -216,10 +213,11 @@ def caracteristic_time(cycles, start, deltaH, minLen):
         if complete_cycle(cycle, deltaH, minLen) :
             for p in percentages:
                 ratio = percentages[p]
-                
+                minCycle = min_cycle(cycle)
                 # First, find the threshold at 95, 86.5 or 63.2%
-                threshold = min_cycle(cycle) + p * delta(cycle) / 100
-                # print("expected: {}, exact: {}".format(minCycle + threshold, min(cycle, key=lambda x:abs(minCycle + threshold-x))))
+                threshold = minCycle + p * delta(cycle) / 100
+                if print_help: print("expected: {}, exact: {}".format(threshold, min(cycle, key=lambda x:abs(threshold-x))))
+                
                 # Then the lambda function will find the closest actual value in the list.
                 # Its index gives us the abscissa of the corresponding value. Since all cycles begin
                 # at zero, this abscissa is also the T, 2T or 3T of our system.
@@ -279,6 +277,7 @@ def compute_slopes(cycles, start, deltaH, minLen, label_cycles, times):
     intercepts = []
     std_errors = []
     date_strings = []
+
     # Non-discarded cycles
     valid_cycles = []
     for i in range(start, len(cycles), 2) :
@@ -290,6 +289,7 @@ def compute_slopes(cycles, start, deltaH, minLen, label_cycles, times):
             time_ln = times[i]
             ln = compute_ln(cycle)
            
+           # look for the part of the slope we have to consider to get a R > 0.99
             r_value = 0
             offset = 0
             while abs(r_value) < 0.99 and offset < len(ln) - 1:
@@ -301,8 +301,10 @@ def compute_slopes(cycles, start, deltaH, minLen, label_cycles, times):
             ln = ln[:-offset]
             cycle = cycle[:-offset]
 
+            # only considering the value found if it's still a complete cycle
             if complete_cycle(cycle, deltaH, minLen):
 
+                # then the linear regression is saved
                 slope, intercept, r_value, p_value, std_err = linregress(time_ln, ln)
 
                 if print_help:
@@ -374,9 +376,3 @@ def filter_slopes(slopes, std_errors, intercepts, ln_cycles, len_cycles, date_st
             # we can increment the index. Otherwise we don't.
             idxSlopes += 1
     return slopes
-
-
-
-# TODO
-# should also check that it's the right beginning of the cycle
-# linear approx when concatenating
